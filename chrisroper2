@@ -1,0 +1,104 @@
+/**
+ * Reveal on Scroll - Intersection Observer utility
+ * Triggers CSS animations when elements become visible in viewport
+ * 
+ * @example
+ * revealOnScroll('.reveal');
+ * 
+ * @example
+ * revealOnScroll('.reveal', {
+ *   threshold: 0.25,
+ *   rootMargin: '0px',
+ *   observeOnce: true,
+ *   onReveal: (element) => console.log('Revealed:', element)
+ * });
+ */
+
+function revealOnScroll(selector, options = {}) {
+  // Default configuration
+  const config = {
+    threshold: options.threshold ?? 0.15,
+    rootMargin: options.rootMargin ?? '0px',
+    observeOnce: options.observeOnce ?? true,
+    visibleClass: options.visibleClass ?? 'visible',
+    onReveal: options.onReveal ?? null,
+    ...options
+  };
+
+  // Check for browser support
+  if (!('IntersectionObserver' in window)) {
+    console.warn('IntersectionObserver not supported. Falling back to adding visible class immediately.');
+    document.querySelectorAll(selector).forEach(el => {
+      el.classList.add(config.visibleClass);
+    });
+    return;
+  }
+
+  // Get all elements to observe
+  const items = document.querySelectorAll(selector);
+
+  if (items.length === 0) {
+    console.warn(`No elements found matching selector: "${selector}"`);
+    return;
+  }
+
+  // Create observer
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        // Add visible class
+        entry.target.classList.add(config.visibleClass);
+
+        // Trigger callback if provided
+        if (typeof config.onReveal === 'function') {
+          config.onReveal(entry.target);
+        }
+
+        // Stop observing if observeOnce is true
+        if (config.observeOnce) {
+          observer.unobserve(entry.target);
+        }
+      } else if (!config.observeOnce) {
+        // Remove visible class when out of view (if observeOnce is false)
+        entry.target.classList.remove(config.visibleClass);
+      }
+    });
+  }, {
+    threshold: config.threshold,
+    rootMargin: config.rootMargin
+  });
+
+  // Observe all items
+  items.forEach(item => observer.observe(item));
+
+  // Return observer for manual cleanup if needed
+  return observer;
+}
+
+/**
+ * Stagger animation helper
+ * Adds sequential delays to child elements for cascading reveal effect
+ * 
+ * @example
+ * staggerReveal('.reveal', { delay: 100, maxDelay: 600 });
+ */
+
+function staggerReveal(selector, options = {}) {
+  const config = {
+    delay: options.delay ?? 100,
+    maxDelay: options.maxDelay ?? 600,
+    ...options
+  };
+
+  const items = document.querySelectorAll(selector);
+
+  items.forEach((item, index) => {
+    const calculatedDelay = Math.min(index * config.delay, config.maxDelay);
+    item.style.setProperty('--reveal-delay', `${calculatedDelay}ms`);
+  });
+}
+
+// Export for modules
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { revealOnScroll, staggerReveal };
+}
